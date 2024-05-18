@@ -1,30 +1,23 @@
 const express = require('express');
 const multer = require('multer');
+const AWS = require('aws-sdk');
 const path = require('path');
-const fs = require('fs');
+const { v4: uuidv4 } = require('uuid');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Ensure the uploads directory exists
-const uploadsDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir);
-}
-
-// Set up storage for multer
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, 'uploads/');
-    },
-    filename: (req, file, cb) => {
-        cb(null, Date.now() + path.extname(file.originalname));
-    }
+// Configure AWS S3
+const s3 = new AWS.S3({
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    region: process.env.AWS_REGION
 });
 
+// Set up multer storage to memory
+const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
 app.use(express.static('public'));
-app.use('/uploads', express.static('uploads'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -34,18 +27,38 @@ app.post('/api/recordings', upload.single('recording'), (req, res) => {
     if (!file) {
         return res.status(400).json({ message: 'No file uploaded' });
     }
-    res.json({ message: 'Recording received successfully', file: `/uploads/${file.filename}` });
+
+    const params = {
+        Bucket: process.env.S3_BUCKET_NAME,
+        Key: `${uuidv4()}${path.extname(file.originalname)}`,
+        Body: file.buffer,
+        ContentType: file.mimetype,
+        ACL: 'public-read'
+    };
+
+    s3.upload(params, (err, data) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).json({ message: 'Error uploading file' });
+        }
+        res.json({ message: 'Recording received successfully', file: data.Location });
+    });
 });
 
-// Endpoint to get list of recordings
-app.get('/api/recordings', (req, res) => {
-    fs.readdir(uploadsDir, (err, files) => {
-        if (err) {
-            return res.status(500).json({ message: 'Error reading recordings directory' });
-        }
-        const recordings = files.map(file => `/uploads/${file}`);
-        res.json({ recordings: recordings });
-    });
+// Endpoint to get list of recordings (if you want to list all files, S3 is not recommended for this)
+app.get('/api/recordings', async (req, res) => {
+    const params = {
+        Bucket: process.env.S3_BUCKET_NAME,
+    };
+
+    try {
+        const data = await s3.listObjectsV2(params).promise();
+        const recordings = data.Contents.map(item => `https://${params.Bucket}.s3.amazonaws.com/${item.Key}`);
+        res.json({ recordings });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error fetching recordings' });
+    }
 });
 
 app.listen(PORT, () => {
