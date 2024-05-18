@@ -45,7 +45,7 @@ app.post('/api/recordings', upload.single('recording'), (req, res) => {
     });
 });
 
-// Endpoint to get list of recordings (if you want to list all files, S3 is not recommended for this)
+// Endpoint to get list of recordings
 app.get('/api/recordings', async (req, res) => {
     const params = {
         Bucket: process.env.S3_BUCKET_NAME,
