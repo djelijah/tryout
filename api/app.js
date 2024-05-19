@@ -4,13 +4,14 @@ const AWS = require('aws-sdk');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 443;
 
 // Configure AWS S3
 const s3 = new AWS.S3({
     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-    region: process.env.AWS_REGION
+    region: process.env.AWS_REGION,
+    endpoint: 'https://myscreams.s3.us-east-1.amazonaws.com'
 });
 
 // Set up multer storage to memory
