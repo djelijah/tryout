@@ -8,9 +8,9 @@ const PORT = process.env.PORT || 443;
 
 // Configure AWS S3
 const s3 = new AWS.S3({
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-    region: process.env.AWS_REGION,
+    accessKeyId: 'AKIA2UC3DZU3N7T6UOHX',
+    secretAccessKey: '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',
+    region: 'us-east-1',
     endpoint: 'https://myscreams.s3.us-east-1.amazonaws.com'
 });
 
